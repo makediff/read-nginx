@@ -41,6 +41,7 @@ static ngx_conf_enum_t  ngx_debug_points[] = {
 };
 
 
+// conf里的命令解析处理逻辑
 static ngx_command_t  ngx_core_commands[] = {
 
     { ngx_string("daemon"),
@@ -169,7 +170,7 @@ static ngx_command_t  ngx_core_commands[] = {
       ngx_null_command
 };
 
-
+// 负责 module 的初始化和配置
 static ngx_core_module_t  ngx_core_module_ctx = {
     ngx_string("core"),
     ngx_core_module_create_conf,
@@ -413,8 +414,8 @@ main(int argc, char *const *argv)
 
     if (ngx_process == NGX_PROCESS_SINGLE) {
         ngx_single_process_cycle(cycle);
-
     } else {
+        // 启动 master-worker进程
         ngx_master_process_cycle(cycle);
     }
 

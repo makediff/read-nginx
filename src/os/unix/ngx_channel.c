@@ -11,9 +11,10 @@
 
 
 ngx_int_t
-ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size,
+ngx_write_channel(ngx_socket_t s, ngx_channel_t *ch, size_t size, //ch内储存着本进程的信息,s是父进程的socket值（channel[0]）
     ngx_log_t *log)
 {
+    // ch内储存着本进程的信息,s是父进程的socket值（channel[0]）
     ssize_t             n;
     ngx_err_t           err;
     struct iovec        iov[1];

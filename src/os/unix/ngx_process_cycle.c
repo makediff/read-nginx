@@ -92,6 +92,7 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     ngx_listening_t   *ls;
     ngx_core_conf_t   *ccf;
 
+    // 屏蔽信号
     sigemptyset(&set);
     sigaddset(&set, SIGCHLD);
     sigaddset(&set, SIGALRM);
@@ -130,11 +131,15 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
         p = ngx_cpystrn(p, (u_char *) ngx_argv[i], size);
     }
 
+    // 区分 master 和 manager ?
+
+    // master 进程标题设置
     ngx_setproctitle(title);
 
 
     ccf = (ngx_core_conf_t *) ngx_get_conf(cycle->conf_ctx, ngx_core_module);
 
+    // 启动worker进程
     ngx_start_worker_processes(cycle, ccf->worker_processes,
                                NGX_PROCESS_RESPAWN);
     ngx_start_cache_manager_processes(cycle, 0);
@@ -151,8 +156,10 @@ ngx_master_process_cycle(ngx_cycle_t *cycle)
     sigio = 0;
     live = 1;
 
+    // 父进程进入无限循环
     for ( ;; ) {
         if (delay) {
+            // 信号处理和worker进程管理
             if (ngx_sigalrm) {
                 sigio = 0;
                 delay *= 2;
@@ -392,18 +399,20 @@ ngx_start_worker_processes(ngx_cycle_t *cycle, ngx_int_t n, ngx_int_t type)
 
     for (i = 0; i < n; i++) {
 
+        // 并行的处理 ngx_worker_process_cycle
         ngx_spawn_process(cycle, ngx_worker_process_cycle,
                           (void *) (intptr_t) i, "worker process", type);
+        ch.pid = ngx_processes[ngx_process_slot].pid; // 子进程pid
+        ch.slot = ngx_process_slot; // 子进程在worker池子中的位置
+        ch.fd = ngx_processes[ngx_process_slot].channel[0]; // 和子进程间的channel, channel[0]为父进程的socket，channel[1]为子进程的socket
 
-        ch.pid = ngx_processes[ngx_process_slot].pid;
-        ch.slot = ngx_process_slot;
-        ch.fd = ngx_processes[ngx_process_slot].channel[0];
-
+        // 向每一个进程的父进程发送本进程的信息
         ngx_pass_open_channel(cycle, &ch);
     }
 }
 
 
+// cache 定时清除
 static void
 ngx_start_cache_manager_processes(ngx_cycle_t *cycle, ngx_uint_t respawn)
 {
@@ -465,8 +474,10 @@ ngx_pass_open_channel(ngx_cycle_t *cycle, ngx_channel_t *ch)
 {
     ngx_int_t  i;
 
+    // 遍历所有进程
     for (i = 0; i < ngx_last_process; i++) {
 
+        //跳过本进程和退出/不能通信的进程
         if (i == ngx_process_slot
             || ngx_processes[i].pid == -1
             || ngx_processes[i].channel[0] == -1)
@@ -482,6 +493,8 @@ ngx_pass_open_channel(ngx_cycle_t *cycle, ngx_channel_t *ch)
 
         /* TODO: NGX_AGAIN */
 
+        // 把本进程的信息发送给每一个进程的父进程
+        // @todo 父进程接受到后怎么处理的呢?
         ngx_write_channel(ngx_processes[i].channel[0],
                           ch, sizeof(ngx_channel_t), cycle->log);
     }
@@ -785,12 +798,16 @@ ngx_master_process_exit(ngx_cycle_t *cycle)
 }
 
 
+// worker进程主处理逻辑
 static void
 ngx_worker_process_cycle(ngx_cycle_t *cycle, void *data)
 {
     ngx_int_t worker = (intptr_t) data;
 
     ngx_process = NGX_PROCESS_WORKER;
+
+    // 子进程并发执行的时候，这个不是会相互覆盖的吗
+    // 不会，这个是复制的父进程的，每个字进程看到的不一样
     ngx_worker = worker;
 
     ngx_worker_process_init(cycle, worker);

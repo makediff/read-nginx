@@ -14,7 +14,7 @@
 
 
 typedef struct {
-    size_t      len;
+    size_t      len; // 这个是占用的字节，而不是strlen
     u_char     *data;
 } ngx_str_t;
 
