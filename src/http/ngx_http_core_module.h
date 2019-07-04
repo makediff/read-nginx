@@ -110,7 +110,7 @@ typedef struct {
 #endif
 } ngx_http_listen_opt_t;
 
-
+// ngx HTTP 的11个阶段
 typedef enum {
     NGX_HTTP_POST_READ_PHASE = 0,
 
