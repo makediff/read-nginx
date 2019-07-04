@@ -22,6 +22,8 @@ ngx_uint_t         ngx_max_module;
 #if (!T_NGX_SHOW_INFO)
 static
 #endif
+
+// 一共有多少个modules
 ngx_uint_t  ngx_modules_n;
 
 
@@ -56,6 +58,7 @@ ngx_cycle_modules(ngx_cycle_t *cycle)
         return NGX_ERROR;
     }
 
+    // 把通过configure生成的modules复制到cycle的modules
     ngx_memcpy(cycle->modules, ngx_modules,
                ngx_modules_n * sizeof(ngx_module_t *));
 
